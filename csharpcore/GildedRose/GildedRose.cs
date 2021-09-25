@@ -1,89 +1,73 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace GildedRoseKata
 {
     public class GildedRose
     {
-        IList<Item> Items;
-        public GildedRose(IList<Item> Items)
+        public const int MaxQuality = 50;
+        public const int MinQuality = 0;
+
+        private readonly IList<Item> _items;
+
+        public GildedRose(IList<Item> items)
         {
-            this.Items = Items;
+            _items = items;
         }
 
         public void UpdateQuality()
         {
-            for (var i = 0; i < Items.Count; i++)
+            foreach (var item in _items)
             {
-                if (Items[i].Name != "Aged Brie" && Items[i].Name != "Backstage passes to a TAFKAL80ETC concert")
-                {
-                    if (Items[i].Quality > 0)
-                    {
-                        if (Items[i].Name != "Sulfuras, Hand of Ragnaros")
-                        {
-                            Items[i].Quality = Items[i].Quality - 1;
-                        }
-                    }
-                }
-                else
-                {
-                    if (Items[i].Quality < 50)
-                    {
-                        Items[i].Quality = Items[i].Quality + 1;
+                item.SellIn -= 1;
 
-                        if (Items[i].Name == "Backstage passes to a TAFKAL80ETC concert")
-                        {
-                            if (Items[i].SellIn < 11)
-                            {
-                                if (Items[i].Quality < 50)
-                                {
-                                    Items[i].Quality = Items[i].Quality + 1;
-                                }
-                            }
-
-                            if (Items[i].SellIn < 6)
-                            {
-                                if (Items[i].Quality < 50)
-                                {
-                                    Items[i].Quality = Items[i].Quality + 1;
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if (Items[i].Name != "Sulfuras, Hand of Ragnaros")
-                {
-                    Items[i].SellIn = Items[i].SellIn - 1;
-                }
-
-                if (Items[i].SellIn < 0)
-                {
-                    if (Items[i].Name != "Aged Brie")
-                    {
-                        if (Items[i].Name != "Backstage passes to a TAFKAL80ETC concert")
-                        {
-                            if (Items[i].Quality > 0)
-                            {
-                                if (Items[i].Name != "Sulfuras, Hand of Ragnaros")
-                                {
-                                    Items[i].Quality = Items[i].Quality - 1;
-                                }
-                            }
-                        }
-                        else
-                        {
-                            Items[i].Quality = Items[i].Quality - Items[i].Quality;
-                        }
-                    }
-                    else
-                    {
-                        if (Items[i].Quality < 50)
-                        {
-                            Items[i].Quality = Items[i].Quality + 1;
-                        }
-                    }
-                }
+                UpdateItemQuantity(item);
             }
         }
+
+        private static void UpdateItemQuantity(Item item)
+        {
+            switch (item.Name)
+            {
+                case SulfurasProductDefaults.Name:
+                    break;
+                case ConjuredDefaults.Name:
+                    item.Quality = item.SellIn switch
+                    {
+                        < 0 => item.Quality = DecreseQuality(item, ConjuredDefaults.PastSellInDateConjuredDegradationRatio),
+                        _ => item.Quality = DecreseQuality(item, ConjuredDefaults.ConjuredDegradationRatio)
+                    };
+                    break;
+                case BackstagePassDefaults.Name:
+                    item.Quality = item.SellIn switch
+                    {
+                        < 0 => MinQuality,
+                        < 5 => IncreaseQuality(item, BackstagePassDefaults.PassUltraValueIncrease),
+                        < 10 => IncreaseQuality(item, BackstagePassDefaults.PassExtraValueIncrease),
+                        _ => IncreaseQuality(item, BackstagePassDefaults.PassDefaultValueIncrease),
+                    };
+                    break;
+                case AgedBrieDefaults.Name:
+                    item.Quality = item.SellIn switch
+                    {
+                        < 0 => item.Quality = IncreaseQuality(item, AgedBrieDefaults.AgedBrieIncreaseAfterSellInDate),
+                        _ => item.Quality = IncreaseQuality(item, AgedBrieDefaults.AgedBrieDefaultIncrease)
+                    };
+                    break;
+                default:
+                    item.Quality = item.SellIn switch
+                    {
+                        < 0 => item.Quality = DecreseQuality(item, CommonProductDefaults.PastSellInDateDefaultDegradationRation),
+                        _ => item.Quality = DecreseQuality(item, CommonProductDefaults.DefaultDegradationRatio)
+                    };
+                    break;
+            }
+        }
+
+        private static int IncreaseQuality(Item item, int value) =>
+            Math.Min(item.Quality + value, MaxQuality);
+
+        private static int DecreseQuality(Item item, int value ) =>
+            item.Quality <= MinQuality ? item.Quality : Math.Max(item.Quality - value, 0);
     }
 }
